@@ -17,29 +17,29 @@ export async function POST(req: NextRequest) {
     console.log('▶ yt-dlp metadata output:', JSON.stringify(info, null, 2))
 
     const bestVideo = info.formats?.find((f: any) =>
-      f.vcodec !== 'none' && f.acodec === 'none'
+      f.vcodec !== 'none' &&
+      f.ext === 'mp4' &&
+      (f.format_id?.includes('h264') || f.format_id === 'download')
     )
-    const bestAudio = info.formats?.find((f: any) =>
-      f.vcodec === 'none' && f.acodec !== 'none'
-    )
+    const bestAudio = info.formats?.find((f: any) => f.vcodec === 'none' && f.acodec !== 'none')
 
     let combinedFormat = null
-    if (bestVideo && bestAudio) {
+    if (bestVideo?.format_id) {
       combinedFormat = {
-        videoId: bestVideo.format_id,
-        audioId: bestAudio.format_id,
+        videoId: String(bestVideo.format_id),
+        audioId: bestAudio?.format_id || null,
         resolution: bestVideo.height ? `${bestVideo.height}p` : 'unknown',
         ext: bestVideo.ext,
       }
     }
 
-    const isDirect = ['twitter', 'facebook', 'instagram'].includes(info.extractor)
+    const isDirect = ['twitter', 'facebook'].includes(info.extractor)
     let formats = []
 
     if (info.formats && info.formats.length > 0) {
       formats = info.formats
         .filter((f: any) =>
-          f.vcodec !== 'none' &&
+          (f.vcodec !== 'none' || f.acodec !== 'none') &&
           f.ext === 'mp4' &&
           (f.filesize || f.filesize_approx)
         )
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
           format_id: f.format_id,
           ext: f.ext,
           container: f.container || f.ext,
-          resolution: f.height ? `${f.height}p` : 'unknown',
+          resolution: f.height ? `${f.height}p` : f.acodec !== 'none' && f.vcodec === 'none' ? 'audio-only' : 'unknown',
           filesize: f.filesize || f.filesize_approx,
         }))
 
@@ -69,15 +69,19 @@ export async function POST(req: NextRequest) {
       }]
     }
 
-    const audioOnly = info.formats
+    const bestAudioFallback = info.formats
       .filter((f: any) => f.vcodec === 'none' && f.acodec !== 'none')
-      .sort((a: any, b: any) => (b.filesize || 0) - (a.filesize || 0))[0]
-
-    const bestAudioFallback = audioOnly ? {
-      format_id: audioOnly.format_id,
-      ext: audioOnly.ext,
-      filesize: audioOnly.filesize || null,
-    } : null
+      .sort((a: any, b: any) => (b.filesize || 0) - (a.filesize || 0))[0] ? {
+        format_id: info.formats
+          .filter((f: any) => f.vcodec === 'none' && f.acodec !== 'none')
+          .sort((a: any, b: any) => (b.filesize || 0) - (a.filesize || 0))[0].format_id,
+        ext: info.formats
+          .filter((f: any) => f.vcodec === 'none' && f.acodec !== 'none')
+          .sort((a: any, b: any) => (b.filesize || 0) - (a.filesize || 0))[0].ext,
+        filesize: info.formats
+          .filter((f: any) => f.vcodec === 'none' && f.acodec !== 'none')
+          .sort((a: any, b: any) => (b.filesize || 0) - (a.filesize || 0))[0].filesize || null,
+      } : null
 
     return Response.json({
       title: info.title,

@@ -30,10 +30,10 @@ export default function Home() {
   const handleDownload = (f: any) => {
     if (f.url) {
       window.location.href = f.url
-    } else if (f.videoId && f.audioId) {
-      window.location.href = `/api/stream?url=${encodeURIComponent(url)}&video=${f.videoId}&audio=${f.audioId}`
+    } else if (f.format_id) {
+      window.location.href = `/api/stream?url=${encodeURIComponent(url)}&format=${f.format_id}`;
     } else {
-      window.location.href = `/api/stream?url=${encodeURIComponent(url)}&format=${f.format_id}`
+      alert('Missing format information');
     }
   }
 
@@ -72,15 +72,6 @@ export default function Home() {
               <h3>Download Audio (Best Quality):</h3>
               <button onClick={() => handleDownload(videoInfo.bestAudio)} style={{ padding: '8px 16px' }}>
                 {videoInfo.bestAudio.ext}
-              </button>
-            </>
-          )}
-
-          {videoInfo.combinedFormat && (
-            <>
-              <h3>Download Combined Video + Audio:</h3>
-              <button onClick={() => handleDownload(videoInfo.combinedFormat)} style={{ padding: '8px 16px' }}>
-                {videoInfo.combinedFormat.ext} - {videoInfo.combinedFormat.resolution}
               </button>
             </>
           )}

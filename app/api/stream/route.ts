@@ -9,12 +9,27 @@ export async function GET(req: NextRequest) {
     const url = req.nextUrl.searchParams.get('url')
     const videoId = req.nextUrl.searchParams.get('video')
     const audioId = req.nextUrl.searchParams.get('audio')
-    const isTikTok = url ? url.includes('tiktok.com') : false
-    const isCombined = isTikTok || (!!videoId && !!audioId)
-    const format = isCombined ? `${videoId}+${audioId}` : req.nextUrl.searchParams.get('format')
+    const isCombined = !!videoId
+    const format = isCombined
+        ? (audioId && audioId !== 'null' ? `${videoId}+${audioId}` : `${videoId}+bestaudio`)
+        : req.nextUrl.searchParams.get('format')
 
-    if (!url || !format) {
-        return new Response('Missing url or format', { status: 400 })
+    console.log('💡 Debug:', {
+      url,
+      format,
+      videoId,
+      audioId,
+      isCombined
+    })
+
+    if (
+        !url ||
+        !format ||
+        format === 'null' ||
+        format === 'null+null' ||
+        /(^|[+])null($|[+])/.test(format)
+    ) {
+        return new Response('Missing or invalid url/format', { status: 400 });
     }
 
     try {
@@ -22,19 +37,19 @@ export async function GET(req: NextRequest) {
         const parsedInfo = JSON.parse(info.stdout)
         const title = parsedInfo.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()
         const videoFormat = videoId || format
-        const audioFormat = audioId || 'bestaudio'
+        const audioFormat = audioId || null
         const resolution = parsedInfo.height ? `${parsedInfo.height}p_` : ''
         const filename = `${resolution}${title}_indirla.mp4`
 
         const stream = new PassThrough()
 
-        console.log('▶️ Starting stream. TikTok:', isTikTok, 'Format:', format)
+        console.log('▶️ Starting stream. Format:', format)
         if (isCombined) {
             try {
                 const { stdout: videoUrl } = await execa('yt-dlp', ['-f', videoFormat, '-g', url])
                 let audioUrl: string | null = null
                 try {
-                    const { stdout } = await execa('yt-dlp', ['-f', audioFormat, '-g', url])
+                    const { stdout } = await execa('yt-dlp', ['-f', audioFormat || 'bestaudio', '-g', url])
                     audioUrl = stdout.trim()
                 } catch {
                     console.warn('⚠️ No separate audio stream found, using video-only.')
@@ -43,13 +58,12 @@ export async function GET(req: NextRequest) {
                 const ffmpegArgs = audioUrl ? [
                     '-i', videoUrl.trim(),
                     '-i', audioUrl,
-                    '-map', '0:v:0',
-                    '-map', '1:a:0',
+                    ...(audioUrl ? ['-map', '0:v:0', '-map', '1:a:0'] : []),
                     '-c:v', 'libx264',
                     '-preset', 'veryfast',
-                    '-crf', '23',
+                    '-crf', '28',
                     '-c:a', 'aac',
-                    '-b:a', '128k',
+                    '-b:a', '96k',
                     '-movflags', 'frag_keyframe+empty_moov',
                     '-f', 'mp4',
                     'pipe:1'
@@ -57,7 +71,9 @@ export async function GET(req: NextRequest) {
                     '-i', videoUrl.trim(),
                     '-c:v', 'libx264',
                     '-preset', 'veryfast',
-                    '-crf', '23',
+                    '-crf', '28',
+                    '-c:a', 'aac',
+                    '-b:a', '96k',
                     '-movflags', 'frag_keyframe+empty_moov',
                     '-f', 'mp4',
                     'pipe:1'
@@ -92,7 +108,7 @@ export async function GET(req: NextRequest) {
             },
         })
     } catch (err: any) {
-        console.error('❌ yt-dlp stream error:', err.message)
-        return new Response('Failed to stream video', { status: 500 })
+        console.error('❌ yt-dlp stream error:', err);
+        return new Response(`Failed to stream video: ${err.message || err}`, { status: 500 });
     }
 }
