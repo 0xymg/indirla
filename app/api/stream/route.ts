@@ -6,8 +6,30 @@ import { execa } from 'execa'
 import { PassThrough, Readable } from 'stream'
 
 import { PlatformDetector } from '@/lib/utils/platform-detector'
+import { isValidDomain, getClientIdentifier } from '@/lib/security/domain-check'
+import { checkRateLimit } from '@/lib/security/rate-limiter'
 
 export async function GET(req: NextRequest) {
+    // Check domain restriction
+    if (!isValidDomain(req)) {
+        return new Response('Unauthorized domain', { status: 403 })
+    }
+
+    // Check rate limit for downloads (stricter limit for actual downloads)
+    const clientId = getClientIdentifier(req)
+    const rateLimitResult = checkRateLimit(`download_${clientId}`, 2, 60 * 1000) // 2 downloads per minute
+    
+    if (!rateLimitResult.success) {
+        return new Response('Download rate limit exceeded. Please wait before downloading another video.', {
+            status: 429,
+            headers: {
+                'X-RateLimit-Limit': rateLimitResult.limit.toString(),
+                'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+                'X-RateLimit-Reset': new Date(rateLimitResult.resetTime).toISOString(),
+                'Retry-After': Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString(),
+            },
+        })
+    }
     const originalUrl = req.nextUrl.searchParams.get('url')
     const url = originalUrl ? PlatformDetector.detect(originalUrl).cleanUrl : null
     const videoId = req.nextUrl.searchParams.get('video')

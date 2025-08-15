@@ -1,4 +1,4 @@
-import { BaseDownloader, DownloadResult, VideoInfo } from './base-downloader'
+import { BaseDownloader, DownloadResult, VideoInfo, VideoFormat } from './base-downloader'
 
 export class TikTokDownloader extends BaseDownloader {
   protected platformName = 'TikTok'
@@ -22,7 +22,7 @@ export class TikTokDownloader extends BaseDownloader {
       // TikTok genellikle direkt URL döner
       const isDirect = info.url && (!info.formats || info.formats.length === 0)
       
-      let formats = []
+      let formats: VideoFormat[] = []
       if (info.formats && info.formats.length > 0) {
         formats = this.processFormats(info.formats)
       } else if (isDirect) {
@@ -31,7 +31,7 @@ export class TikTokDownloader extends BaseDownloader {
           ext: 'mp4',
           container: 'mp4',
           resolution: 'default',
-          filesize: null,
+          filesize: undefined,
           url: info.url
         }]
       }
