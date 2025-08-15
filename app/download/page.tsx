@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -17,7 +17,7 @@ interface VideoFormat {
   url?: string
 }
 
-export default function DownloadPage() {
+function DownloadPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [countdown, setCountdown] = useState(5)
@@ -171,5 +171,20 @@ export default function DownloadPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function DownloadPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white py-12 px-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <DownloadPageContent />
+    </Suspense>
   )
 }
