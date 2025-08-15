@@ -4,6 +4,36 @@ export const runtime = 'nodejs'
 import { NextRequest } from 'next/server'
 import { execa } from 'execa'
 
+function cleanYouTubeURL(url: string): string {
+  try {
+    const urlObj = new URL(url)
+    
+    // YouTube URL'si değilse, orijinal URL'yi döndür
+    if (!urlObj.hostname.includes('youtube.com') && !urlObj.hostname.includes('youtu.be')) {
+      return url
+    }
+    
+    // youtu.be kısa linklerini işle
+    if (urlObj.hostname.includes('youtu.be')) {
+      const videoId = urlObj.pathname.slice(1)
+      return `https://www.youtube.com/watch?v=${videoId}`
+    }
+    
+    // Normal YouTube linklerini işle
+    if (urlObj.pathname === '/watch') {
+      const videoId = urlObj.searchParams.get('v')
+      if (videoId) {
+        return `https://www.youtube.com/watch?v=${videoId}`
+      }
+    }
+    
+    return url
+  } catch {
+    // URL parse edilemezse orijinal URL'yi döndür
+    return url
+  }
+}
+
 export async function POST(req: NextRequest) {
   const { url } = await req.json()
 
@@ -11,8 +41,13 @@ export async function POST(req: NextRequest) {
     return new Response('Missing URL', { status: 400 })
   }
 
+  // URL'yi temizle
+  const cleanedUrl = cleanYouTubeURL(url)
+  console.log('🔗 Original URL:', url)
+  console.log('🧹 Cleaned URL:', cleanedUrl)
+
   try {
-    const { stdout } = await execa('yt-dlp', ['-j', url])
+    const { stdout } = await execa('yt-dlp', ['-j', cleanedUrl])
     const info = JSON.parse(stdout)
     console.log('▶ yt-dlp metadata output:', JSON.stringify(info, null, 2))
 
