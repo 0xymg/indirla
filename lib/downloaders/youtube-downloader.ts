@@ -55,7 +55,7 @@ export class YouTubeDownloader extends BaseDownloader {
           videoId: String(bestVideo.format_id),
           audioId: bestAudio?.format_id || null,
           resolution: bestVideo.height ? `${bestVideo.height}p` : 'unknown',
-          ext: bestVideo.ext,
+          ext: String(bestVideo.ext),
         }
       }
       
@@ -73,7 +73,7 @@ export class YouTubeDownloader extends BaseDownloader {
         thumbnail: info.thumbnail || (info.thumbnails?.[0]?.url ?? undefined),
         formats,
         bestAudio: bestAudioFormat,
-        combinedFormat,
+        combinedFormat: combinedFormat || undefined,
         duration: info.duration,
         uploader: info.uploader,
         description: info.description,
