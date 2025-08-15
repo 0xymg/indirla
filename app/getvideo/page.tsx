@@ -18,6 +18,10 @@ interface VideoFormat {
   resolution: string
   filesize?: number
   url?: string
+  hasAudio?: boolean
+  hasVideo?: boolean
+  audioCodec?: string
+  videoCodec?: string
 }
 
 interface VideoInfo {

@@ -12,6 +12,32 @@ export class InstagramDownloader extends BaseDownloader {
     }
   }
   
+  private processInstagramFormats(formats: any[]): VideoFormat[] {
+    if (!formats || formats.length === 0) return []
+    
+    return formats
+      .filter((f: any) => f.ext === 'mp4' && (f.filesize || f.filesize_approx))
+      .map((f: any) => ({
+        format_id: f.format_id,
+        ext: f.ext,
+        container: f.container || f.ext,
+        resolution: f.height ? `${f.height}p + Audio` : 'Unknown + Audio',
+        filesize: f.filesize || f.filesize_approx,
+        hasAudio: true, // Instagram'da her format sesli olarak göster
+        hasVideo: true,
+        audioCodec: 'aac',
+        videoCodec: f.vcodec || 'h264',
+      }))
+      .sort((a, b) => {
+        // Yüksek çözünürlük önce
+        const getHeight = (res: string) => {
+          const match = res.match(/(\d+)p/)
+          return match ? parseInt(match[1]) : 0
+        }
+        return getHeight(b.resolution) - getHeight(a.resolution)
+      })
+  }
+  
   async getVideoInfo(url: string): Promise<DownloadResult> {
     try {
       console.log('🔗 Instagram URL:', url)
@@ -22,18 +48,40 @@ export class InstagramDownloader extends BaseDownloader {
       // Instagram genellikle direkt URL döner
       const isDirect = info.url && (!info.formats || info.formats.length === 0)
       
+      // Instagram için özel format processing - hepsi sesli
       let formats: VideoFormat[] = []
+      
       if (info.formats && info.formats.length > 0) {
-        formats = this.processFormats(info.formats)
+        // Normal formatları işle ama hepsini sesli olarak göster
+        formats = this.processInstagramFormats(info.formats)
       } else if (isDirect) {
-        formats = [{
-          format_id: 'direct',
-          ext: 'mp4',
-          container: 'mp4',
-          resolution: 'default',
-          filesize: undefined,
-          url: info.url
-        }]
+        // Direkt URL için multiple resolution options oluştur (hepsi sesli)
+        formats = [
+          {
+            format_id: 'best',
+            ext: 'mp4',
+            container: 'mp4',
+            resolution: 'Best Quality',
+            filesize: undefined,
+            url: info.url,
+            hasAudio: true,
+            hasVideo: true,
+            audioCodec: 'aac',
+            videoCodec: 'h264'
+          },
+          {
+            format_id: 'worst',
+            ext: 'mp4', 
+            container: 'mp4',
+            resolution: 'Lower Quality',
+            filesize: undefined,
+            url: info.url,
+            hasAudio: true,
+            hasVideo: true,
+            audioCodec: 'aac',
+            videoCodec: 'h264'
+          }
+        ]
       }
       
       const { bestVideo, bestAudio } = this.findBestFormats(info.formats || [])
@@ -55,16 +103,6 @@ export class InstagramDownloader extends BaseDownloader {
         isDirect
       })
       
-      // Instagram için her zaman combined format seçeneği sun
-      // yt-dlp'nin kendi bestvideo+bestaudio seçicisini kullan
-      let combinedFormat = {
-        videoId: 'bestvideo',
-        audioId: 'bestaudio', 
-        resolution: 'best',
-        ext: 'mp4',
-      }
-      
-      console.log('✅ Instagram combined format created with bestvideo+bestaudio')
       
       const videoInfo: VideoInfo = {
         title: info.title || 'Instagram Video',
@@ -77,7 +115,6 @@ export class InstagramDownloader extends BaseDownloader {
           resolution: 'audio-only',
           filesize: bestAudio.filesize || bestAudio.filesize_approx,
         } : undefined,
-        combinedFormat: combinedFormat || undefined,
         url: isDirect ? info.url : undefined,
         duration: info.duration,
         uploader: info.uploader,

@@ -67,22 +67,27 @@ export async function GET(req: NextRequest) {
         // Instagram için özel handling
         const isInstagram = url.includes('instagram.com')
         
-        if (isCombined) {
-            if (isInstagram) {
-                // Instagram için direkt yt-dlp stream kullan
-                console.log('📱 Instagram combined download - using direct yt-dlp stream')
-                try {
-                    const args = ['-f', 'best', '-o', '-', url]
-                    console.log('▶️ Instagram yt-dlp args:', args)
-                    const proc = execa('yt-dlp', args, { stdout: 'pipe' })
-                    if (!proc.stdout) throw new Error('No output from yt-dlp')
-                    proc.stdout.pipe(stream)
-                    console.log('✅ Instagram direct yt-dlp streaming started')
-                } catch (err) {
-                    console.error('❌ Instagram direct streaming failed:', err)
-                    throw err
+        if (isInstagram) {
+            // Instagram için her zaman direkt yt-dlp stream kullan (combined veya normal)
+            console.log('📱 Instagram download - using direct yt-dlp stream')
+            try {
+                // Format'ı belirle
+                let ytdlpFormat = 'best'
+                if (format && format !== 'combined') {
+                    ytdlpFormat = format
                 }
-            } else {
+                
+                const args = ['-f', ytdlpFormat, '-o', '-', url]
+                console.log('▶️ Instagram yt-dlp args:', args)
+                const proc = execa('yt-dlp', args, { stdout: 'pipe' })
+                if (!proc.stdout) throw new Error('No output from yt-dlp')
+                proc.stdout.pipe(stream)
+                console.log('✅ Instagram direct yt-dlp streaming started')
+            } catch (err) {
+                console.error('❌ Instagram direct streaming failed:', err)
+                throw err
+            }
+        } else if (isCombined) {
                 // Diğer platformlar için ffmpeg kombinasyonu
                 try {
                     const { stdout: videoUrl } = await execa('yt-dlp', ['-f', videoFormat, '-g', url])
