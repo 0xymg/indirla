@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
     if (!rateLimitResult.success) {
         return new Response('Rate limit exceeded.', { status: 429 })
     }
+
     const originalUrl = req.nextUrl.searchParams.get('url')
     const url = originalUrl ? PlatformDetector.detect(originalUrl).cleanUrl : null
     const videoId = req.nextUrl.searchParams.get('video')
@@ -34,11 +35,11 @@ export async function GET(req: NextRequest) {
     console.log('🔗 Stream Original URL:', originalUrl)
     console.log('🧹 Stream Cleaned URL:', url)
     console.log('💡 Debug:', {
-      url,
-      format,
-      videoId,
-      audioId,
-      isCombined
+        url,
+        format,
+        videoId,
+        audioId,
+        isCombined
     })
 
     if (
@@ -67,78 +68,60 @@ export async function GET(req: NextRequest) {
         // Instagram için özel handling
         const isInstagram = url.includes('instagram.com')
         
-        if (isInstagram) {
-            // Instagram için her zaman direkt yt-dlp stream kullan (combined veya normal)
-            console.log('📱 Instagram download - using direct yt-dlp stream')
-            try {
-                // Format'ı belirle
-                let ytdlpFormat = 'best'
-                if (format && format !== 'combined') {
-                    ytdlpFormat = format
-                }
-                
-                const args = ['-f', ytdlpFormat, '-o', '-', url]
+        if (isCombined) {
+            if (isInstagram) {
+                // Instagram için direkt yt-dlp stream kullan
+                console.log('📱 Instagram combined download - using direct yt-dlp stream')
+                const args = ['-f', 'best', '-o', '-', url]
                 console.log('▶️ Instagram yt-dlp args:', args)
                 const proc = execa('yt-dlp', args, { stdout: 'pipe' })
                 if (!proc.stdout) throw new Error('No output from yt-dlp')
                 proc.stdout.pipe(stream)
                 console.log('✅ Instagram direct yt-dlp streaming started')
-            } catch (err) {
-                console.error('❌ Instagram direct streaming failed:', err)
-                throw err
-            }
-        } else if (isCombined) {
+            } else {
                 // Diğer platformlar için ffmpeg kombinasyonu
+                const { stdout: videoUrl } = await execa('yt-dlp', ['-f', videoFormat, '-g', url])
+                let audioUrl: string | null = null
                 try {
-                    const { stdout: videoUrl } = await execa('yt-dlp', ['-f', videoFormat, '-g', url])
-                    let audioUrl: string | null = null
-                    try {
-                        const { stdout: audioStdout } = await execa('yt-dlp', ['-f', audioFormat || 'bestaudio', '-g', url])
-                        audioUrl = audioStdout.trim()
-                    } catch {
-                        console.warn('⚠️ No separate audio stream found, using video-only.')
-                    }
-
-                    const ffmpegArgs = audioUrl ? [
-                        '-i', videoUrl.trim(),
-                        '-i', audioUrl,
-                        '-map', '0:v:0', '-map', '1:a:0',
-                        '-c:v', 'libx264',
-                        '-preset', 'veryfast',
-                        '-crf', '28',
-                        '-c:a', 'aac',
-                        '-b:a', '96k',
-                        '-movflags', 'frag_keyframe+empty_moov',
-                        '-f', 'mp4',
-                        'pipe:1'
-                    ] : [
-                        '-i', videoUrl.trim(),
-                        '-c:v', 'libx264',
-                        '-preset', 'veryfast',
-                        '-crf', '28',
-                        '-c:a', 'aac',
-                        '-b:a', '96k',
-                        '-movflags', 'frag_keyframe+empty_moov',
-                        '-f', 'mp4',
-                        'pipe:1'
-                    ]
-
-                    console.log('▶️ Calling ffmpeg with args:', ffmpegArgs)
-                    const ffmpeg = execa('ffmpeg', ffmpegArgs, { stdout: 'pipe', stderr: 'inherit' })
-                    if (!ffmpeg.stdout) throw new Error('No output from ffmpeg')
-                    ffmpeg.stdout.pipe(stream)
-                    console.log('✅ ffmpeg streaming started')
-                } catch (err) {
-                    console.error('❌ Error during combined streaming:', err)
-                    throw err
+                    const { stdout: audioStdout } = await execa('yt-dlp', ['-f', audioFormat || 'bestaudio', '-g', url])
+                    audioUrl = audioStdout.trim()
+                } catch {
+                    console.warn('⚠️ No separate audio stream found, using video-only.')
                 }
+
+                const ffmpegArgs = audioUrl ? [
+                    '-i', videoUrl.trim(),
+                    '-i', audioUrl,
+                    '-map', '0:v:0', '-map', '1:a:0',
+                    '-c:v', 'libx264',
+                    '-preset', 'veryfast',
+                    '-crf', '28',
+                    '-c:a', 'aac',
+                    '-b:a', '96k',
+                    '-movflags', 'frag_keyframe+empty_moov',
+                    '-f', 'mp4',
+                    'pipe:1'
+                ] : [
+                    '-i', videoUrl.trim(),
+                    '-c:v', 'libx264',
+                    '-preset', 'veryfast',
+                    '-crf', '28',
+                    '-c:a', 'aac',
+                    '-b:a', '96k',
+                    '-movflags', 'frag_keyframe+empty_moov',
+                    '-f', 'mp4',
+                    'pipe:1'
+                ]
+
+                console.log('▶️ Calling ffmpeg with args:', ffmpegArgs)
+                const ffmpeg = execa('ffmpeg', ffmpegArgs, { stdout: 'pipe', stderr: 'inherit' })
+                if (!ffmpeg.stdout) throw new Error('No output from ffmpeg')
+                ffmpeg.stdout.pipe(stream)
+                console.log('✅ ffmpeg streaming started')
             }
         } else {
-            const args = [
-                '-f', format,
-                '-o', '-',
-                url,
-            ]
+            // Normal yt-dlp download
+            const args = ['-f', format, '-o', '-', url]
             console.log('▶️ Calling yt-dlp with args:', args)
             const proc = execa('yt-dlp', args, { stdout: 'pipe' })
             if (!proc.stdout) throw new Error('No output from yt-dlp')
