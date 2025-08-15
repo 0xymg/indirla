@@ -56,6 +56,11 @@ function DownloadPageContent() {
     
     if (formatId === 'direct' && searchParams.get('directUrl')) {
       window.location.href = searchParams.get('directUrl')!
+    } else if (formatId === 'combined') {
+      // Handle combined format (video + audio)
+      const videoId = searchParams.get('videoId')
+      const audioId = searchParams.get('audioId')
+      window.location.href = `/api/stream?url=${encodeURIComponent(url!)}&video=${videoId}&audio=${audioId}`
     } else {
       window.location.href = `/api/stream?url=${encodeURIComponent(url!)}&format=${formatId}`
     }

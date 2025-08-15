@@ -242,6 +242,50 @@ function GetVideoPageContent() {
                 </div>
               )}
 
+              {/* Combined Format (Video + Audio) */}
+              {videoInfo.combinedFormat && (
+                <div>
+                  <Separator className="bg-gray-200" />
+                  <div className="pt-6">
+                    <h3 className="text-base font-medium text-black mb-4">Best Quality (Video + Audio)</h3>
+                    <Card className="p-4 max-w-sm border border-gray-200 bg-blue-50">
+                      <div className="flex items-center justify-between mb-3">
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-0 text-xs">
+                          {videoInfo.combinedFormat.ext?.toUpperCase()}
+                        </Badge>
+                        <Badge variant="outline" className="border-blue-200 text-blue-600 text-xs">
+                          {videoInfo.combinedFormat.resolution}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-blue-600 mb-3">
+                        Combined video and audio
+                      </p>
+                      <Button 
+                        onClick={() => {
+                          if (videoInfo.combinedFormat) {
+                            const params = new URLSearchParams({
+                              url: url,
+                              format: 'combined',
+                              title: videoInfo.title || 'Video Download',
+                              resolution: videoInfo.combinedFormat.resolution,
+                              ext: videoInfo.combinedFormat.ext,
+                              videoId: videoInfo.combinedFormat.videoId,
+                              audioId: videoInfo.combinedFormat.audioId || '',
+                            })
+                            router.push(`/download?${params.toString()}`)
+                          }
+                        }} 
+                        size="sm" 
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                      >
+                        <Download className="mr-2 h-3 w-3" />
+                        Download with Audio
+                      </Button>
+                    </Card>
+                  </div>
+                </div>
+              )}
+
               {/* Audio Format */}
               {videoInfo.bestAudio && (
                 <div>
