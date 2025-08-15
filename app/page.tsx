@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -37,6 +38,7 @@ interface VideoInfo {
 }
 
 export default function Home() {
+  const router = useRouter()
   const [url, setUrl] = useState('')
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null)
   const [loading, setLoading] = useState(false)
@@ -72,13 +74,23 @@ export default function Home() {
   }
 
   const handleDownload = (f: VideoFormat) => {
-    if (f.url) {
-      window.location.href = f.url
-    } else if (f.format_id) {
-      window.location.href = `/api/stream?url=${encodeURIComponent(url)}&format=${f.format_id}`;
-    } else {
-      setError('Missing format information');
+    const params = new URLSearchParams({
+      url: url,
+      format: f.format_id,
+      title: videoInfo?.title || 'Video Download',
+      resolution: f.resolution,
+      ext: f.ext,
+    })
+    
+    if (f.filesize) {
+      params.append('filesize', f.filesize.toString())
     }
+    
+    if (f.url) {
+      params.append('directUrl', f.url)
+    }
+    
+    router.push(`/download?${params.toString()}`)
   }
 
   const formatFileSize = (bytes: number) => {
@@ -148,7 +160,7 @@ export default function Home() {
                     Loading...
                   </>
                 ) : (
-                  'Analyze'
+                  'Get Video'
                 )}
               </Button>
             </div>
@@ -266,7 +278,19 @@ export default function Home() {
                         </Badge>
                       </div>
                       <Button 
-                        onClick={() => videoInfo.url && (window.location.href = videoInfo.url)} 
+                        onClick={() => {
+                          if (videoInfo.url) {
+                            const params = new URLSearchParams({
+                              url: url,
+                              format: 'direct',
+                              title: videoInfo.title || 'Video Download',
+                              resolution: 'default',
+                              ext: 'mp4',
+                              directUrl: videoInfo.url
+                            })
+                            router.push(`/download?${params.toString()}`)
+                          }
+                        }} 
                         size="sm" 
                         className="w-full bg-black hover:bg-gray-800 text-white text-xs"
                       >
@@ -280,6 +304,18 @@ export default function Home() {
             </CardContent>
           </Card>
         )}
+
+        {/* Google Ads Area */}
+        <Card className="mt-8 border border-gray-200 shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-center h-32 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+              <div className="text-center">
+                <p className="text-gray-500 text-sm">Advertisement</p>
+                <p className="text-gray-400 text-xs mt-1">Google Ads will appear here</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
