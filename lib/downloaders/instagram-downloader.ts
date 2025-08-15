@@ -74,7 +74,7 @@ export class InstagramDownloader extends BaseDownloader {
         }]
       }
       
-      const { bestVideo, bestAudio } = this.findBestFormats(info.formats || [])
+      const { bestAudio } = this.findBestFormats(info.formats || [])
       
       // Instagram için combined format - her zaman ekle
       let combinedFormat = {

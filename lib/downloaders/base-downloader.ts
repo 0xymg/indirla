@@ -43,11 +43,42 @@ export abstract class BaseDownloader {
   protected async executeYtDlp(url: string, options: string[] = []): Promise<any> {
     const { execa } = await import('execa')
     try {
+      // Try yt-dlp first
       const { stdout } = await execa('yt-dlp', ['-j', ...options, url])
       return JSON.parse(stdout)
     } catch (error: any) {
       console.error(`❌ ${this.platformName} yt-dlp error:`, error.message)
-      throw new Error(`Failed to fetch ${this.platformName} video info: ${error.message}`)
+      
+      // Fallback for YouTube with ytdl-core
+      if ((url.includes('youtube.com') || url.includes('youtu.be')) && this.platformName === 'YouTube') {
+        console.log('🔄 Falling back to ytdl-core for YouTube')
+        try {
+          const ytdl = require('ytdl-core')
+          const info = await ytdl.getBasicInfo(url)
+          
+          // Convert ytdl-core format to yt-dlp format
+          return {
+            title: info.videoDetails.title,
+            thumbnail: info.videoDetails.thumbnails?.[0]?.url,
+            duration: parseInt(info.videoDetails.lengthSeconds),
+            uploader: info.videoDetails.author?.name,
+            description: info.videoDetails.description,
+            formats: info.formats?.map((f: any) => ({
+              format_id: f.itag?.toString(),
+              ext: f.container || 'mp4',
+              height: f.height,
+              filesize: f.contentLength ? parseInt(f.contentLength) : undefined,
+              acodec: f.hasAudio ? f.audioCodec || 'mp4a' : 'none',
+              vcodec: f.hasVideo ? f.videoCodec || 'avc1' : 'none',
+              url: f.url
+            }))
+          }
+        } catch (fallbackError: any) {
+          console.error('❌ ytdl-core fallback also failed:', fallbackError.message)
+        }
+      }
+      
+      throw new Error(`yt-dlp not available and no fallback for ${this.platformName}: ${error.message}`)
     }
   }
   
