@@ -12,12 +12,17 @@ export class InstagramDownloader extends BaseDownloader {
     }
   }
   
-  // Instagram için normal format processing
+  // Instagram için normal format processing - sadece sesli videoları dahil et
   private processInstagramFormats(formats: any[]): VideoFormat[] {
     if (!formats || formats.length === 0) return []
     
     return formats
-      .filter((f: any) => f.ext === 'mp4' && (f.filesize || f.filesize_approx))
+      .filter((f: any) => 
+        f.ext === 'mp4' && 
+        (f.filesize || f.filesize_approx) &&
+        f.acodec !== 'none' && // Sadece sesli videoları dahil et
+        f.vcodec !== 'none'    // Video codec'i de olmalı
+      )
       .map((f: any) => {
         const hasVideo = f.vcodec && f.vcodec !== 'none'
         const hasAudio = f.acodec && f.acodec !== 'none'

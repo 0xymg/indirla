@@ -76,7 +76,8 @@ export abstract class BaseDownloader {
     
     const processedFormats = formats
       .filter((f: any) =>
-        (f.vcodec !== 'none' || f.acodec !== 'none') &&
+        f.acodec !== 'none' && // Sadece sesli videoları dahil et
+        f.vcodec !== 'none' && // Video codec'i de olmalı
         f.ext === 'mp4' &&
         (f.filesize || f.filesize_approx)
       )
