@@ -25,6 +25,15 @@ interface VideoInfo {
   formats?: VideoFormat[]
   bestAudio?: VideoFormat
   url?: string
+  combinedFormat?: {
+    videoId: string
+    audioId: string | null
+    resolution: string
+    ext: string
+  }
+  duration?: number
+  uploader?: string
+  description?: string
 }
 
 export default function Home() {
@@ -33,47 +42,10 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const cleanYouTubeURL = (inputUrl: string): string => {
-    try {
-      const urlObj = new URL(inputUrl)
-      
-      // YouTube URL'si değilse, orijinal URL'yi döndür
-      if (!urlObj.hostname.includes('youtube.com') && !urlObj.hostname.includes('youtu.be')) {
-        return inputUrl
-      }
-      
-      // youtu.be kısa linklerini işle
-      if (urlObj.hostname.includes('youtu.be')) {
-        const videoId = urlObj.pathname.slice(1)
-        return `https://www.youtube.com/watch?v=${videoId}`
-      }
-      
-      // Normal YouTube linklerini işle
-      if (urlObj.pathname === '/watch') {
-        const videoId = urlObj.searchParams.get('v')
-        if (videoId) {
-          return `https://www.youtube.com/watch?v=${videoId}`
-        }
-      }
-      
-      return inputUrl
-    } catch {
-      // URL parse edilemezse orijinal URL'yi döndür
-      return inputUrl
-    }
-  }
-
   const fetchVideoInfo = async () => {
     if (!url.trim()) {
       setError('Please enter a valid URL')
       return
-    }
-    
-    const cleanedUrl = cleanYouTubeURL(url.trim())
-    
-    // Eğer URL temizlendiyse, input'u güncelle
-    if (cleanedUrl !== url.trim()) {
-      setUrl(cleanedUrl)
     }
     
     setLoading(true)
@@ -84,7 +56,7 @@ export default function Home() {
       const res = await fetch('/api/download', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: cleanedUrl }),
+        body: JSON.stringify({ url: url.trim() }),
       })
       
       if (!res.ok) throw new Error('Failed to fetch video info')
