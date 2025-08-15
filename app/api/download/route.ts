@@ -7,28 +7,17 @@ import { isValidDomain, getClientIdentifier } from '@/lib/security/domain-check'
 import { checkRateLimit } from '@/lib/security/rate-limiter'
 
 export async function POST(req: NextRequest) {
-  // Check domain restriction (temporarily disabled for testing)
-  if (false && !isValidDomain(req)) {
-    return new Response('Unauthorized domain', { status: 403 })
-  }
+  // Domain restriction disabled
+  // if (!isValidDomain(req)) {
+  //   return new Response('Unauthorized domain', { status: 403 })
+  // }
 
-  // Check rate limit (more relaxed for initial testing)
+  // Rate limiting very relaxed for testing
   const clientId = getClientIdentifier(req)
-  console.log('⏱️ Rate limit check for client:', clientId)
-  const rateLimitResult = checkRateLimit(clientId, 5, 60 * 1000) // 5 per minute for testing
-  console.log('⏱️ Rate limit result:', rateLimitResult)
+  const rateLimitResult = checkRateLimit(clientId, 50, 60 * 1000) // 50 per minute
   
   if (!rateLimitResult.success) {
-    console.log('❌ Rate limit exceeded for client:', clientId)
-    return new Response('Rate limit exceeded. Please wait before making another request.', {
-      status: 429,
-      headers: {
-        'X-RateLimit-Limit': rateLimitResult.limit.toString(),
-        'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
-        'X-RateLimit-Reset': new Date(rateLimitResult.resetTime).toISOString(),
-        'Retry-After': Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString(),
-      },
-    })
+    return new Response('Rate limit exceeded.', { status: 429 })
   }
 
   const { url } = await req.json()
@@ -46,13 +35,7 @@ export async function POST(req: NextRequest) {
       return new Response(result.error || 'Failed to fetch video info', { status: 500 })
     }
     
-    return Response.json(result.data, {
-      headers: {
-        'X-RateLimit-Limit': rateLimitResult.limit.toString(),
-        'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
-        'X-RateLimit-Reset': new Date(rateLimitResult.resetTime).toISOString(),
-      },
-    })
+    return Response.json(result.data)
   } catch (err: any) {
     console.error('❌ API error:', err.message)
     return new Response('Internal server error', { status: 500 })

@@ -5,6 +5,10 @@ export interface VideoFormat {
   resolution: string
   filesize?: number
   url?: string
+  hasAudio?: boolean
+  hasVideo?: boolean
+  audioCodec?: string
+  videoCodec?: string
 }
 
 export interface VideoInfo {
@@ -76,17 +80,26 @@ export abstract class BaseDownloader {
         f.ext === 'mp4' &&
         (f.filesize || f.filesize_approx)
       )
-      .map((f: any) => ({
-        format_id: f.format_id,
-        ext: f.ext,
-        container: f.container || f.ext,
-        resolution: f.height 
-          ? `${f.height}p` 
-          : f.acodec !== 'none' && f.vcodec === 'none' 
-            ? 'audio-only' 
-            : 'unknown',
-        filesize: f.filesize || f.filesize_approx,
-      }))
+      .map((f: any) => {
+        const hasVideo = f.vcodec && f.vcodec !== 'none'
+        const hasAudio = f.acodec && f.acodec !== 'none'
+        
+        return {
+          format_id: f.format_id,
+          ext: f.ext,
+          container: f.container || f.ext,
+          resolution: f.height 
+            ? `${f.height}p` 
+            : hasAudio && !hasVideo
+              ? 'audio-only' 
+              : 'unknown',
+          filesize: f.filesize || f.filesize_approx,
+          hasAudio,
+          hasVideo,
+          audioCodec: f.acodec,
+          videoCodec: f.vcodec,
+        }
+      })
     
     // Remove duplicates, keeping the highest quality for each resolution
     return processedFormats.reduce((acc: VideoFormat[], curr: VideoFormat) => {

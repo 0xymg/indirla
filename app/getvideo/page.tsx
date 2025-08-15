@@ -214,15 +214,37 @@ function GetVideoPageContent() {
                   <h3 className="text-base font-medium text-black mb-4">Video Formats</h3>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {videoInfo.formats.map((f: VideoFormat) => (
-                      <Card key={f.format_id} className="p-4 border border-gray-200 hover:border-gray-300 transition-colors">
+                      <Card key={f.format_id} className={`p-4 border transition-colors ${
+                        f.hasAudio && f.hasVideo 
+                          ? 'border-green-200 bg-green-50 hover:border-green-300' 
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}>
                         <div className="flex items-center justify-between mb-3">
-                          <Badge variant="secondary" className="bg-gray-100 text-gray-700 border-0 text-xs">
+                          <Badge variant="secondary" className={`border-0 text-xs ${
+                            f.hasAudio && f.hasVideo 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-gray-100 text-gray-700'
+                          }`}>
                             {f.ext?.toUpperCase()}
                           </Badge>
                           <Badge variant="outline" className="border-gray-200 text-gray-600 text-xs">
                             {f.resolution}
                           </Badge>
                         </div>
+                        
+                        <div className="flex gap-2 mb-3">
+                          {f.hasVideo && (
+                            <Badge variant="outline" className="text-xs border-blue-200 text-blue-600">
+                              📹 Video
+                            </Badge>
+                          )}
+                          {f.hasAudio && (
+                            <Badge variant="outline" className="text-xs border-green-200 text-green-600">
+                              🔊 Audio
+                            </Badge>
+                          )}
+                        </div>
+                        
                         {f.filesize && (
                           <p className="text-xs text-gray-500 mb-3">
                             {formatFileSize(f.filesize)}
@@ -238,50 +260,6 @@ function GetVideoPageContent() {
                         </Button>
                       </Card>
                     ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Combined Format (Video + Audio) */}
-              {videoInfo.combinedFormat && (
-                <div>
-                  <Separator className="bg-gray-200" />
-                  <div className="pt-6">
-                    <h3 className="text-base font-medium text-black mb-4">Best Quality (Video + Audio)</h3>
-                    <Card className="p-4 max-w-sm border border-gray-200 bg-blue-50">
-                      <div className="flex items-center justify-between mb-3">
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-0 text-xs">
-                          {videoInfo.combinedFormat.ext?.toUpperCase()}
-                        </Badge>
-                        <Badge variant="outline" className="border-blue-200 text-blue-600 text-xs">
-                          {videoInfo.combinedFormat.resolution}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-blue-600 mb-3">
-                        Combined video and audio
-                      </p>
-                      <Button 
-                        onClick={() => {
-                          if (videoInfo.combinedFormat) {
-                            const params = new URLSearchParams({
-                              url: url,
-                              format: 'combined',
-                              title: videoInfo.title || 'Video Download',
-                              resolution: videoInfo.combinedFormat.resolution,
-                              ext: videoInfo.combinedFormat.ext,
-                              videoId: videoInfo.combinedFormat.videoId,
-                              audioId: videoInfo.combinedFormat.audioId || '',
-                            })
-                            router.push(`/download?${params.toString()}`)
-                          }
-                        }} 
-                        size="sm" 
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs"
-                      >
-                        <Download className="mr-2 h-3 w-3" />
-                        Download with Audio
-                      </Button>
-                    </Card>
                   </div>
                 </div>
               )}
