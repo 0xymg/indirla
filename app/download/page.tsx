@@ -149,7 +149,7 @@ function DownloadPageContent() {
                   Download Started!
                 </div>
                 <p className="text-sm text-gray-600">
-                  If the download doesn't start automatically, click the button below.
+                  If the download doesn&apos;t start automatically, click the button below.
                 </p>
                 <Button
                   onClick={startDownload}

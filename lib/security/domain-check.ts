@@ -5,19 +5,26 @@ export function isValidDomain(request: Request): boolean {
   
   console.log('🔒 Domain check:', { origin, referer, host })
   
+  const defaultDomains = ['https://indir.la', 'https://www.indir.la']
+  const envDomains = process.env.ALLOWED_DOMAINS?.split(',')
+    .map(d => d.trim())
+    .filter(Boolean) || []
+  const devDomains = ['http://localhost:3000', 'http://127.0.0.1:3000']
+
   const allowedDomains = [
-    'https://indir.la',
-    'https://www.indir.la',
-    'http://localhost:3000', // Development
-    'http://127.0.0.1:3000', // Development
+    ...defaultDomains,
+    ...envDomains,
+    ...(process.env.NODE_ENV === 'development' ? devDomains : [])
   ]
-  
-  const allowedHosts = [
-    'indir.la',
-    'www.indir.la',
-    'localhost:3000',
-    '127.0.0.1:3000'
-  ]
+
+  const allowedHosts = allowedDomains
+    .map(domain => {
+      try {
+        return new URL(domain).host
+      } catch {
+        return domain
+      }
+    })
   
   // Check host header first (most reliable on Vercel)
   if (host && allowedHosts.some(allowedHost => host === allowedHost)) {
