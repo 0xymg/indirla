@@ -10,10 +10,10 @@ import { isValidDomain, getClientIdentifier } from '@/lib/security/domain-check'
 import { checkRateLimit } from '@/lib/security/rate-limiter'
 
 export async function GET(req: NextRequest) {
-    // Domain restriction disabled
-    // if (!isValidDomain(req)) {
-    //     return new Response('Unauthorized domain', { status: 403 })
-    // }
+    const domainCheckDisabled = process.env.DISABLE_DOMAIN_CHECK === 'true'
+    if (!domainCheckDisabled && !isValidDomain(req)) {
+        return new Response('Unauthorized domain', { status: 403 })
+    }
 
     // Rate limiting very relaxed for testing
     const clientId = getClientIdentifier(req)
